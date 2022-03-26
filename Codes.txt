@@ -1,0 +1,146 @@
+Liquid Crystal:
+Connection:
+* LCD RS pin to digital pin 12
+* LCD Enable pin to digital pin 11
+* LCD D4 pin to digital pin 5
+* LCD D5 pin to digital pin 4
+* LCD D6 pin to digital pin 3
+* LCD D7 pin to digital pin 2
+* LCD R/W pin to ground
+* LCD VSS pin to ground
+* LCD VCC pin to 5V
+* 10K POT:
+* ends to +5V and ground
+* wiper to LCD VO pin (pin 3)
+
+General
+//includes
+#include <LiquidCrystal.h>
+#include <Servo.h>
+#include "DHT.h"
+//
+char Incoming_value = 0;         
+void setup()
+//Bluetooth
+pinMode(13, OUTPUT);
+//ultasonic
+#define echoPin 6
+#define trigPin 7
+const int trig = 1;
+const int echo = 0;
+long duration;
+int distance;
+
+
+//LCD
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+//temperature sensor
+int val;
+int tempPin = 1;
+//humidity
+#define DHTPIN 2
+#define DHTTYPE DHT11 // DHT 11
+DHT dht(DHTPIN, DHTTYPE);
+
+//Servo
+Servo myservo1;
+Servo myservo2;
+int pos = 0;
+
+void setup() {
+  lcd.begin(16, 2);
+  myservo1.attach(9);
+  myservo1.attach(10);
+  
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an OUTPUT
+  pinMode(echoPin, INPUT); // Sets the echoPin as an INPUT
+  Serial.begin(9600);
+
+  lcd.clear();
+  lcd.setCursor(5,0);
+  lcd.print("WELCOME");
+  lcd.setCursor(0,1);
+  lcd.print("360 Degree Radar");
+//humidity
+dht.begin();
+  delay(500);
+}
+void loop(){
+//Bluetooth
+  if(Serial.available() > 0)  
+  {
+    Incoming_value = Serial.read();
+    Serial.print(Incoming_value);    
+    Serial.print("\n");   
+    if(Incoming_value == '1') 
+      digitalWrite(13, HIGH);  
+    else if(Incoming_value == '0')      
+      digitalWrite(13, LOW);  
+  }
+//temperature
+val = analogRead(tempPin);
+  float mv = ( val/1024.0)*5000;
+  float cel = mv/10;
+  float farh = (cel*9)/5 + 32;
+  delay(1000);
+
+//humidity
+   delay(2000); 
+   float h = dht.readHumidity();
+   float t = dht.readTemperature();
+   float f = dht.readTemperature(true);
+   if (isnan(h) || isnan(t) || isnan(f)) {
+      Serial.println("Failed to read from DHT sensor!");
+      return;
+//servo
+  for(pos = 0;pos<=180; pos++){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    myservo1.write(pos);
+    digitalWrite(trig, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig, LOW);
+    duration = pulseIn(echo, HIGH);
+    distance= duration*0.034/2;
+    lcd.print("Distance: ");
+    lcd.print(distance);
+    lcd.print("cm");
+  }
+   for(pos = 180;pos>=0; pos--){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    myservo2.write(pos);
+    digitalWrite(trig, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig, LOW);
+    duration = pulseIn(echo, HIGH);
+    distance= duration*0.034/2;
+    lcd.print("Distance: ");
+    lcd.print(distance);
+    lcd.print("cm");
+  }
+// Compute heat index in Fahrenheit (the default)
+   float hif = dht.computeHeatIndex(f, h);
+   // Compute heat index in Celsius (isFahreheit = false)
+   float hic = dht.computeHeatIndex(t, h, false);
+   Serial.print ("Humidity: ");
+   Serial.print (h);
+   Serial.print (" %\t");
+   Serial.print ("Temperature: ");
+   Serial.print (t);
+   Serial.print (" *C ");
+   Serial.print (f);
+   Serial.print (" *F\t");
+   Serial.print ("Heat index: ");
+   Serial.print (hic);
+   Serial.print (" *C ");
+   Serial.print (hif);
+   Serial.println (" *F");
+}
+  }
+
+
